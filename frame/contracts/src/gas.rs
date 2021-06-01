@@ -30,15 +30,6 @@ use sp_core::crypto::UncheckedFrom;
 #[cfg(test)]
 use std::{any::Any, fmt::Debug};
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct ChargedAmount(Weight);
-
-impl ChargedAmount {
-	pub fn amount(&self) -> Weight {
-		self.0
-	}
-}
-
 #[cfg(not(test))]
 pub trait TestAuxiliaries {}
 #[cfg(not(test))]
@@ -135,7 +126,7 @@ where
 	/// NOTE that amount is always consumed, i.e. if there is not enough gas
 	/// then the counter will be set to zero.
 	#[inline]
-	pub fn charge<Tok: Token<T>>(&mut self, token: Tok) -> Result<ChargedAmount, DispatchError> {
+	pub fn charge<Tok: Token<T>>(&mut self, token: Tok) -> Result<(), DispatchError> {
 		#[cfg(test)]
 		{
 			// Unconditionally add the token to the storage.
@@ -153,18 +144,9 @@ where
 		self.gas_left = new_value.unwrap_or_else(Zero::zero);
 
 		match new_value {
-			Some(_) => Ok(ChargedAmount(amount)),
+			Some(_) => Ok(()),
 			None => Err(Error::<T>::OutOfGas.into()),
 		}
-	}
-
-	/// Refund previously charged gas back to the gas meter.
-	///
-	/// This can be used if a gas worst case estimation must be charged before
-	/// performing a certain action. This way the difference can be refundend when
-	/// the worst case did not happen.
-	pub fn refund(&mut self, amount: ChargedAmount) {
-		self.gas_left = self.gas_left.saturating_add(amount.0).min(self.gas_limit)
 	}
 
 	/// Returns how much gas was used.
