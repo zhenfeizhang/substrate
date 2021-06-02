@@ -75,6 +75,9 @@ pub enum ReturnCode {
 	/// recording was disabled.
 	#[cfg(feature = "unstable-interface")]
 	LoggingDisabled = 9,
+	/// The call dispatched by `seal_call_runtime` was executed and returned an error.
+	#[cfg(feature = "unstable-interface")]
+	CallRuntimeReturnedError = 11,
 }
 
 impl ConvertibleToWasm for ReturnCode {
@@ -1614,5 +1617,14 @@ define_env!(Env, <E: Ext>,
 		Ok(ctx.write_sandbox_output(
 			out_ptr, out_len_ptr, &rent_status, false, already_charged
 		)?)
+	},
+
+	// Call some dispatchable inside the runtime.
+	[__unstable__] seal_call_runtime(ctx, call_ptr: u32, call_len: u32) -> ReturnCode => {
+		let call = ctx.read_sandbox_memory_as(call_ptr, call_len)?;
+		match ctx.ext.call_runtime(call) {
+			Ok(_) => Ok(ReturnCode::Success),
+			Err(_) => Ok(ReturnCode::CallRuntimeReturnedError),
+		}
 	},
 );
